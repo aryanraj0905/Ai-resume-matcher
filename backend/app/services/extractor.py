@@ -34,12 +34,19 @@ def extract_skills(text: str):
     """
     Extract technical skills from the resume.
     """
-    text = text.lower()
+    normalized_text = text.lower()
 
     found_skills = []
 
     for skill in TECHNICAL_SKILLS:
-        if skill.lower() in text:
+        normalized_skill = skill.lower()
+        pattern = (
+            r"(?<![a-z0-9+#.])"
+            + re.escape(normalized_skill)
+            + r"(?![a-z0-9+#.])"
+        )
+
+        if re.search(pattern, normalized_text):
             found_skills.append(skill)
 
     return sorted(set(found_skills))

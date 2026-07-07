@@ -8,6 +8,7 @@ from app.services.extractor import (
     extract_phone,
     extract_skills,
 )
+from app.utils.helpers import save_latest_resume_analysis
 
 router = APIRouter()
 
@@ -31,6 +32,14 @@ async def upload_resume(file: UploadFile = File(...)):
     email = extract_email(extracted_text)
     phone = extract_phone(extracted_text)
     skills = extract_skills(extracted_text)
+
+    save_latest_resume_analysis(
+        filename=file.filename,
+        email=email,
+        phone=phone,
+        skills=skills,
+        text=extracted_text,
+    )
 
     # Return response
     return {

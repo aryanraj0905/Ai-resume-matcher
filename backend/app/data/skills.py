@@ -57,5 +57,53 @@ TECHNICAL_SKILLS = [
     # Others
     "Linux",
     "REST API",
-    "CI/CD"
+    "CI/CD",
+
+    # Legal Research and Drafting
+    "Legal Research",
+    "Legal Drafting",
+    "Case Law Analysis",
+    "Case Briefing",
+    "Legal Writing",
+    "Legal Opinion",
+    "Judgment Analysis",
+    "Statutory Interpretation",
+    "Legislative Research",
+
+    # Core Legal Subjects
+    "Constitutional Law",
+    "Administrative Law",
+    "Civil Procedure",
+    "Criminal Procedure",
+    "Public Law",
+    "Civil Law",
+    "Criminal Law",
+    "Contract Law",
+    "Evidence Law",
+    "Service Law",
+    "Tax Law",
+    "Labour Law",
+
+    # Litigation and Court Work
+    "Court Procedures",
+    "Government Litigation",
+    "Writ Petition",
+    "Public Interest Litigation",
+    "Affidavit Drafting",
+    "Petition Drafting",
+    "Pleadings",
+    "Case File Management",
+    "Court Filing",
+    "Legal Notices",
+
+    # Legal Tools and Professional Skills
+    "Legal Databases",
+    "SCC Online",
+    "Manupatra",
+    "Westlaw",
+    "LexisNexis",
+    "Document Review",
+    "Attention to Detail",
+    "Research Skills",
+    "Communication Skills"
 ]
