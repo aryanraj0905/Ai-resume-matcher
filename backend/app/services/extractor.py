@@ -41,9 +41,9 @@ def extract_skills(text: str):
     for skill in TECHNICAL_SKILLS:
         normalized_skill = skill.lower()
         pattern = (
-            r"(?<![a-z0-9+#.])"
+            r"(?<![a-z0-9+#])"
             + re.escape(normalized_skill)
-            + r"(?![a-z0-9+#.])"
+            + r"(?![a-z0-9+#])"
         )
 
         if re.search(pattern, normalized_text):
