@@ -15,6 +15,7 @@ class JobDescription(BaseModel):
 class JobMatchRequest(BaseModel):
     description: str
     resume_skills: list[str] | None = None
+    resume_text: str | None = None
 
 
 @router.post("/analyze")
@@ -30,6 +31,7 @@ def analyze_job(job: JobDescription):
 @router.post("/match")
 def match_resume_with_job(job: JobMatchRequest):
     resume_skills = job.resume_skills
+    resume_text = job.resume_text
 
     if resume_skills is None:
         latest_resume_analysis = get_latest_resume_analysis()
@@ -41,9 +43,15 @@ def match_resume_with_job(job: JobMatchRequest):
             )
 
         resume_skills = latest_resume_analysis["skills"]
+        resume_text = latest_resume_analysis["text"]
 
     job_skills = extract_skills(job.description)
-    match_result = match_skills(resume_skills, job_skills)
+    match_result = match_skills(
+        resume_skills=resume_skills,
+        job_skills=job_skills,
+        resume_text=resume_text,
+        job_description=job.description,
+    )
 
     return {
         "message": "Resume matched with job description successfully!",

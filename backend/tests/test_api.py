@@ -1,6 +1,8 @@
 import fitz
+import pytest
 from fastapi.testclient import TestClient
 
+from app.ai.similarity import cosine_similarity
 from app.main import app
 from app.routes import resume
 
@@ -48,6 +50,38 @@ def test_job_match_uses_provided_resume_skills():
     assert result["matched_skills"] == ["Python", "SQL"]
     assert result["missing_skills"] == ["Docker", "FastAPI"]
     assert result["match_percentage"] == 50.0
+    assert result["keyword_score"] == 50.0
+    assert result["semantic_score"] is None
+    assert result["overall_score"] == 50.0
+
+
+def test_job_match_combines_keyword_and_semantic_scores(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.matcher.calculate_semantic_similarity",
+        lambda resume_text, job_description: 80.0,
+    )
+
+    response = client.post(
+        "/job/match",
+        json={
+            "description": "Looking for Python, FastAPI, SQL, and Docker.",
+            "resume_skills": ["Python", "SQL"],
+            "resume_text": "Built backend APIs using Python and SQL.",
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["keyword_score"] == 50.0
+    assert result["semantic_score"] == 80.0
+    assert result["overall_score"] == 69.5
+
+
+def test_cosine_similarity_scores_identical_vectors_as_one():
+    assert cosine_similarity(
+        [1.0, 2.0, 3.0],
+        [1.0, 2.0, 3.0],
+    ) == pytest.approx(1.0)
 
 
 def test_resume_upload_rejects_non_pdf():
