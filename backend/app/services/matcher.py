@@ -1,6 +1,8 @@
 import logging
 
+from app.ai.embeddings import EmbeddingModelUnavailable
 from app.ai.similarity import calculate_semantic_similarity
+from app.config import ENABLE_SEMANTIC_MATCHING
 
 logger = logging.getLogger(__name__)
 
@@ -85,12 +87,15 @@ def match_skills(
 
     semantic_score = None
 
-    if resume_text and job_description:
+    if resume_text and job_description and ENABLE_SEMANTIC_MATCHING:
         logger.info("Calculating semantic resume match score.")
-        semantic_score = calculate_semantic_similarity(
-            resume_text=resume_text,
-            job_description=job_description,
-        )
+        try:
+            semantic_score = calculate_semantic_similarity(
+                resume_text=resume_text,
+                job_description=job_description,
+            )
+        except EmbeddingModelUnavailable as exc:
+            logger.warning("Skipping semantic score: %s", exc)
 
     if semantic_score is None:
         overall_score = keyword_score

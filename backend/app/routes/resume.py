@@ -10,7 +10,7 @@ from app.services.extractor import (
     extract_phone,
     extract_skills,
 )
-from app.utils.helpers import save_latest_resume_analysis
+from app.models.database import save_resume_analysis
 
 router = APIRouter()
 
@@ -74,8 +74,9 @@ async def upload_resume(file: UploadFile = File(...)):
     phone = extract_phone(extracted_text)
     skills = extract_skills(extracted_text)
 
-    save_latest_resume_analysis(
+    resume_id = save_resume_analysis(
         filename=original_filename,
+        stored_filename=file_path.name,
         email=email,
         phone=phone,
         skills=skills,
@@ -84,6 +85,7 @@ async def upload_resume(file: UploadFile = File(...)):
 
     return {
         "message": "Resume uploaded successfully!",
+        "resume_id": resume_id,
         "filename": original_filename,
         "stored_filename": file_path.name,
         "email": email,

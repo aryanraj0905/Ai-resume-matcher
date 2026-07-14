@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.ai.similarity import cosine_similarity
 from app.main import app
+from app.models import database
 from app.routes import resume
 
 
@@ -56,6 +57,7 @@ def test_job_match_uses_provided_resume_skills():
 
 
 def test_job_match_combines_keyword_and_semantic_scores(monkeypatch):
+    monkeypatch.setattr("app.services.matcher.ENABLE_SEMANTIC_MATCHING", True)
     monkeypatch.setattr(
         "app.services.matcher.calculate_semantic_similarity",
         lambda resume_text, job_description: 80.0,
@@ -115,6 +117,7 @@ def test_resume_upload_rejects_invalid_pdf(tmp_path, monkeypatch):
 
 def test_resume_upload_accepts_valid_pdf_with_safe_stored_filename(tmp_path, monkeypatch):
     monkeypatch.setattr(resume, "UPLOAD_FOLDER", tmp_path)
+    monkeypatch.setattr(database, "DATABASE_PATH", tmp_path / "test.db")
 
     response = client.post(
         "/resume/upload",
@@ -130,8 +133,62 @@ def test_resume_upload_accepts_valid_pdf_with_safe_stored_filename(tmp_path, mon
     assert response.status_code == 200
     result = response.json()
     assert result["filename"] == "../Aryan Resume.pdf"
+    assert isinstance(result["resume_id"], int)
     assert result["email"] == "aryan@example.com"
     assert result["skills"] == ["FastAPI", "Python", "SQL"]
     assert result["stored_filename"].startswith("Aryan_Resume_")
     assert result["stored_filename"].endswith(".pdf")
     assert (tmp_path / result["stored_filename"]).exists()
+
+
+def test_job_match_uses_persisted_resume_id(tmp_path, monkeypatch):
+    monkeypatch.setattr(resume, "UPLOAD_FOLDER", tmp_path)
+    monkeypatch.setattr(database, "DATABASE_PATH", tmp_path / "test.db")
+    monkeypatch.setattr("app.services.matcher.ENABLE_SEMANTIC_MATCHING", True)
+    monkeypatch.setattr(
+        "app.services.matcher.calculate_semantic_similarity",
+        lambda resume_text, job_description: 70.0,
+    )
+
+    upload_response = client.post(
+        "/resume/upload",
+        files={
+            "file": (
+                "resume.pdf",
+                _create_pdf_bytes("Aryan\naryan@example.com\nPython FastAPI SQL"),
+                "application/pdf",
+            )
+        },
+    )
+    resume_id = upload_response.json()["resume_id"]
+
+    response = client.post(
+        "/job/match",
+        json={
+            "description": "Looking for Python, FastAPI, SQL, and Docker.",
+            "resume_id": resume_id,
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["matched_skills"] == ["FastAPI", "Python", "SQL"]
+    assert result["missing_skills"] == ["Docker"]
+    assert result["keyword_score"] == 75.0
+    assert result["semantic_score"] == 70.0
+    assert result["overall_score"] == 71.75
+
+
+def test_job_match_rejects_unknown_resume_id(tmp_path, monkeypatch):
+    monkeypatch.setattr(database, "DATABASE_PATH", tmp_path / "test.db")
+
+    response = client.post(
+        "/job/match",
+        json={
+            "description": "Looking for Python.",
+            "resume_id": 999,
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Resume with id 999 was not found."

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from app.services.extractor import extract_skills
 from app.services.matcher import match_skills
-from app.utils.helpers import get_latest_resume_analysis
+from app.models.database import get_latest_resume_analysis, get_resume_analysis
 
 router = APIRouter()
 
@@ -14,6 +14,7 @@ class JobDescription(BaseModel):
 
 class JobMatchRequest(BaseModel):
     description: str
+    resume_id: int | None = None
     resume_skills: list[str] | None = None
     resume_text: str | None = None
 
@@ -34,16 +35,21 @@ def match_resume_with_job(job: JobMatchRequest):
     resume_text = job.resume_text
 
     if resume_skills is None:
-        latest_resume_analysis = get_latest_resume_analysis()
+        if job.resume_id is None:
+            resume_analysis = get_latest_resume_analysis()
+            missing_resume_detail = "Upload a resume first or provide resume_skills."
+        else:
+            resume_analysis = get_resume_analysis(job.resume_id)
+            missing_resume_detail = f"Resume with id {job.resume_id} was not found."
 
-        if latest_resume_analysis is None:
+        if resume_analysis is None:
             raise HTTPException(
                 status_code=400,
-                detail="Upload a resume first or provide resume_skills.",
+                detail=missing_resume_detail,
             )
 
-        resume_skills = latest_resume_analysis["skills"]
-        resume_text = latest_resume_analysis["text"]
+        resume_skills = resume_analysis["skills"]
+        resume_text = resume_analysis["text"]
 
     job_skills = extract_skills(job.description)
     match_result = match_skills(

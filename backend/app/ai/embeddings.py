@@ -7,6 +7,10 @@ logger = logging.getLogger(__name__)
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 
 
+class EmbeddingModelUnavailable(RuntimeError):
+    """Raised when the semantic embedding model is not available locally."""
+
+
 @lru_cache(maxsize=1)
 def get_embedding_model() -> Any:
     """
@@ -20,7 +24,13 @@ def get_embedding_model() -> Any:
 
     from sentence_transformers import SentenceTransformer
 
-    return SentenceTransformer(EMBEDDING_MODEL_NAME)
+    try:
+        return SentenceTransformer(EMBEDDING_MODEL_NAME, local_files_only=True)
+    except Exception as exc:
+        raise EmbeddingModelUnavailable(
+            "Embedding model is not available locally. Run once with internet "
+            "access to download it, or use keyword-only matching."
+        ) from exc
 
 
 def generate_embedding(text: str) -> list[float]:
