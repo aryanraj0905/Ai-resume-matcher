@@ -1,24 +1,24 @@
-# 🤖 AI Resume Matcher
+#  AI Resume Matcher
 
 An AI-powered Resume Matcher built with **FastAPI** that analyzes resumes against job descriptions using **Natural Language Processing (NLP)** and **semantic similarity**. The application provides a match score, identifies missing skills, and generates AI-powered recommendations to improve the resume.
 
 ---
 
-## 🚀 Features
+##  Features
 
-- 📄 Upload Resume (PDF)
-- 📝 Analyze Job Descriptions
-- 🎯 AI-Powered Resume Matching
-- 📊 Match Percentage Calculation
-- 🔍 Skill Extraction
-- ❌ Missing Skills Detection
-- 💡 AI-Powered Resume Recommendations
-- ⚡ FastAPI REST API
-- 🧠 Semantic Similarity using AI Embeddings
+-  Upload Resume (PDF)
+-  Analyze Job Descriptions
+-  AI-Powered Resume Matching
+-  Match Percentage Calculation
+-  Skill Extraction
+-  Missing Skills Detection
+-  AI-Powered Resume Recommendations
+-  FastAPI REST API
+-  Semantic Similarity using AI Embeddings
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 ### Backend
 - Python
@@ -42,7 +42,7 @@ An AI-powered Resume Matcher built with **FastAPI** that analyzes resumes agains
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 ```
 ai_resume_matcher/
@@ -65,7 +65,7 @@ ai_resume_matcher/
 
 ---
 
-## ⚙️ Installation
+##  Installation
 
 Clone the repository
 
@@ -125,7 +125,7 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## 🧠 How It Works
+##  How It Works
 
 1. Upload a resume in PDF format.
 2. Extract text from the resume.
@@ -139,7 +139,7 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## 📈 Future Improvements
+##  Future Improvements
 
 - React Frontend
 - User Authentication
@@ -152,19 +152,14 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## 📸 Screenshots
 
-> Screenshots coming soon.
-
----
-
-## 🎯 Project Goal
+##  Project Goal
 
 The goal of this project is to help job seekers understand how well their resumes match a job description by combining traditional skill matching with AI-powered semantic analysis and personalized recommendations.
 
 ---
 
-## 👨‍💻 Author
+##  Author
 
 **Aryan Raj**
 
