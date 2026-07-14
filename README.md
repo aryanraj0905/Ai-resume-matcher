@@ -1,166 +1,129 @@
-#  AI Resume Matcher
+# ResumeMatch AI
 
-An AI-powered Resume Matcher built with **FastAPI** that analyzes resumes against job descriptions using **Natural Language Processing (NLP)** and **semantic similarity**. The application provides a match score, identifies missing skills, and generates AI-powered recommendations to improve the resume.
+An AI-powered resume matcher that scores how well a resume fits a job description — using real semantic similarity (Sentence Transformers), not keyword counting — and returns category-level scores plus explained, actionable recommendations.
 
----
+## Overview
 
-##  Features
+Upload a resume (PDF) and paste a job description. ResumeMatch AI parses the resume into structured data (contact info, skills, education, experience, projects, certifications), extracts what the job actually requires (required vs. preferred skills, responsibilities), and produces:
 
--  Upload Resume (PDF)
--  Analyze Job Descriptions
--  AI-Powered Resume Matching
--  Match Percentage Calculation
--  Skill Extraction
--  Missing Skills Detection
--  AI-Powered Resume Recommendations
--  FastAPI REST API
--  Semantic Similarity using AI Embeddings
+- An **overall compatibility score** (0-100%)
+- **Category scores**: Skills, Experience, Education, Projects, and Semantic Similarity
+- **Matched / missing / extra skills**, split into required vs. preferred
+- **AI recommendations** — each with a plain-English reason tied to your actual score, not generic advice
 
----
+## Features
 
-##  Tech Stack
+- **Semantic matching** via `sentence-transformers` (`all-MiniLM-L6-v2`), comparing resume content against the job's actual responsibilities/requirements rather than the whole posting verbatim (avoids diluting the signal with boilerplate).
+- **Weighted category scoring** — Skills (35%), Experience (25%), Projects (15%), Education (10%), Semantic Similarity (15%). If semantic scoring is unavailable, weight is redistributed proportionally across the remaining categories rather than silently zeroing the score.
+- **Robust resume extraction**: email, phone, GitHub/LinkedIn URLs, skills, education (degree/institution/year), certifications, work experience (title/duration/bullets), and projects (name/description/tech stack) — parsed with section-header heuristics rather than a fixed template.
+- **Grounded AI recommendations**: every suggestion is derived from the actual extracted data (missing required/preferred skills, unquantified experience bullets, thin project descriptions, missing certifications the job calls out, missing contact info, resume length) — nothing is invented.
+- **Production-minded API**: input validation (short/empty job descriptions, non-PDF uploads, oversized files, encrypted/corrupt PDFs), friendly error messages, CORS configuration via environment variables.
+- **Modern SaaS-style dashboard**: circular score ring, category breakdown bars + chart, skill badges, and an AI insights feed — fully responsive.
+
+## Architecture
+
+```
+                    ┌─────────────────────┐
+                    │   React Frontend     │
+                    │ (Vite + Tailwind)    │
+                    └──────────┬──────────┘
+                               │ REST (axios)
+                    ┌──────────▼──────────┐
+                    │   FastAPI Backend    │
+                    │ ┌──────────────────┐ │
+                    │ │ routes/          │ │  resume upload, job match
+                    │ ├──────────────────┤ │
+                    │ │ services/        │ │  extraction, section parsing,
+                    │ │  extractor.py    │ │  matcher.py, recommendations.py
+                    │ │  matcher.py      │ │
+                    │ │  recommendations │ │
+                    │ ├──────────────────┤ │
+                    │ │ ai/              │ │  embeddings, cosine similarity,
+                    │ │  embeddings.py   │ │  category scoring
+                    │ │  similarity.py   │ │
+                    │ │  category_scoring│ │
+                    │ ├──────────────────┤ │
+                    │ │ models/          │ │  SQLite persistence
+                    │ │  database.py     │ │
+                    │ └──────────────────┘ │
+                    └──────────────────────┘
+```
+
+**Request flow:** upload resume → parse PDF text (PyMuPDF) → extract structured fields → persist to SQLite → submit a job description → extract required/preferred skills + core responsibilities → score each category (keyword overlap + sentence-embedding cosine similarity) → combine into a weighted overall score → generate recommendations from the same extracted data.
+
+## Tech Stack
+
+**Backend:** FastAPI, Sentence Transformers (`all-MiniLM-L6-v2`), PyMuPDF, SQLite, pytest
+**Frontend:** React 19, Vite, Tailwind CSS v4, React Router, Axios, Recharts, lucide-react
+
+## Installation
 
 ### Backend
-- Python
-- FastAPI
-- Uvicorn
-
-### AI / Machine Learning
-- Sentence Transformers
-- Scikit-learn
-
-### Resume Processing
-- PyMuPDF
-- Regular Expressions (Regex)
-
-### Database
-- SQLite
-
-### Version Control
-- Git
-- GitHub
-
----
-
-##  Project Structure
-
-```
-ai_resume_matcher/
-│
-├── backend/
-│   ├── app/
-│   │   ├── ai/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   ├── models/
-│   │   ├── utils/
-│   │   └── main.py
-│   │
-│   ├── uploads/
-│   ├── tests/
-│   └── requirements.txt
-│
-└── README.md
-```
-
----
-
-##  Installation
-
-Clone the repository
 
 ```bash
-git clone https://github.com/aryanraj0905/Ai-resume-matcher.git
-```
-
-Move into the project
-
-```bash
-cd Ai-resume-matcher/backend
-```
-
-Create a virtual environment
-
-```bash
+cd backend
 python -m venv venv
-```
-
-Activate the environment
-
-### Windows
-
-```bash
-venv\Scripts\activate
-```
-
-### macOS/Linux
-
-```bash
-source venv/bin/activate
-```
-
-Install dependencies
-
-```bash
+source venv/Scripts/activate      # Windows (Git Bash): source venv/Scripts/activate
+                                   # macOS/Linux:        source venv/bin/activate
 pip install -r requirements.txt
-```
-
-Run the FastAPI server
-
-```bash
+cp .env.example .env               # adjust as needed
 uvicorn app.main:app --reload
 ```
 
-The API will be available at:
+The API runs at `http://localhost:8000` (interactive docs at `/docs`). The embedding model downloads automatically on first use and is cached for subsequent runs.
 
+### Frontend
+
+```bash
+cd frontend
+npm install
+cp .env.example .env               # set VITE_API_BASE_URL if not using the default
+npm run dev
 ```
-http://127.0.0.1:8000
+
+The app runs at `http://localhost:5173`.
+
+### Running tests
+
+```bash
+cd backend
+pytest
 ```
 
-Interactive API Documentation:
+## API Endpoints
 
-```
-http://127.0.0.1:8000/docs
-```
+| Method | Endpoint         | Description                                                              |
+|--------|------------------|---------------------------------------------------------------------------|
+| GET    | `/health`        | Health check                                                              |
+| POST   | `/resume/upload` | Upload a PDF resume (multipart `file`); returns parsed structured data    |
+| GET    | `/resume/{id}`   | Fetch a previously parsed resume by ID                                    |
+| POST   | `/job/analyze`   | Extract skills from a job description                                    |
+| POST   | `/job/match`     | Match a resume (`resume_id`, or `resume_skills`/`resume_text`) against a job `description`; returns category scores, overall score, and recommendations |
 
----
+See `/docs` for full request/response schemas once the backend is running.
 
-##  How It Works
+## Screenshots
 
-1. Upload a resume in PDF format.
-2. Extract text from the resume.
-3. Parse the job description.
-4. Extract technical skills.
-5. Generate semantic embeddings.
-6. Compare the resume with the job description.
-7. Calculate a match percentage.
-8. Identify missing skills.
-9. Generate AI-powered recommendations for improvement.
+> _Add screenshots here: landing page, upload flow, and the results dashboard._
 
----
+- `docs/screenshots/landing.png`
+- `docs/screenshots/upload.png`
+- `docs/screenshots/results.png`
 
-##  Future Improvements
+## Deployment
 
-- React Frontend
-- User Authentication
-- Resume History
-- Dashboard
-- Multiple Resume Comparison
-- Recruiter Portal
-- Support for DOCX resumes
-- Export analysis as PDF
+### Backend (Render)
 
----
+A `render.yaml` is included. Connect the repo in Render, set the root directory to `backend/`, and set `CORS_ALLOWED_ORIGINS` to your deployed frontend URL.
 
+### Frontend (Vercel)
 
-##  Project Goal
+Import the repo in Vercel with the root directory set to `frontend/` (Vite is auto-detected). Set the `VITE_API_BASE_URL` environment variable to your deployed backend URL. `vercel.json` rewrites all routes to `index.html` so client-side routing works on refresh/deep links.
 
-The goal of this project is to help job seekers understand how well their resumes match a job description by combining traditional skill matching with AI-powered semantic analysis and personalized recommendations.
+## Future Improvements
 
----
-
-##  Author
-
-**Aryan Raj**
-
-GitHub: https://github.com/aryanraj0905
+- Support DOCX resume uploads (currently PDF-only)
+- Multi-resume comparison against a single job description
+- Persist match history per resume and visualize score trends over time
+- Fine-tune or swap the embedding model for a resume/job-specific domain
+- Authenticated accounts for saving resumes and job matches across sessions

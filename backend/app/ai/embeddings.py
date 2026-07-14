@@ -25,12 +25,17 @@ def get_embedding_model() -> Any:
     from sentence_transformers import SentenceTransformer
 
     try:
+        # Prefer an already-cached model (fast, works offline in production),
+        # but fall back to downloading it the first time it is needed.
         return SentenceTransformer(EMBEDDING_MODEL_NAME, local_files_only=True)
-    except Exception as exc:
-        raise EmbeddingModelUnavailable(
-            "Embedding model is not available locally. Run once with internet "
-            "access to download it, or use keyword-only matching."
-        ) from exc
+    except Exception:
+        try:
+            return SentenceTransformer(EMBEDDING_MODEL_NAME)
+        except Exception as exc:
+            raise EmbeddingModelUnavailable(
+                "Embedding model could not be loaded or downloaded. Check "
+                "internet access on first run, or disable semantic matching."
+            ) from exc
 
 
 def generate_embedding(text: str) -> list[float]:

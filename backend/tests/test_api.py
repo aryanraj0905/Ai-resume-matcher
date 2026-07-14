@@ -37,58 +37,55 @@ def test_job_analyze_extracts_skills():
     assert response.json()["skills"] == ["FastAPI", "Python", "SQL"]
 
 
-def test_job_match_uses_provided_resume_skills():
-    response = client.post(
-        "/job/match",
-        json={
-            "description": "Looking for Python, FastAPI, SQL, and Docker.",
-            "resume_skills": ["Python", "SQL"],
-        },
-    )
+def test_job_analyze_rejects_too_short_description():
+    response = client.post("/job/analyze", json={"description": "short"})
 
-    assert response.status_code == 200
-    result = response.json()
-    assert result["matched_skills"] == ["Python", "SQL"]
-    assert result["missing_skills"] == ["Docker", "FastAPI"]
-    assert result["match_percentage"] == 50.0
-    assert result["keyword_score"] == 50.0
-    assert result["semantic_score"] is None
-    assert result["overall_score"] == 50.0
-    assert result["recommendations"]["summary"] == (
-        "Needs improvement. Focus first on missing core skills and role-specific experience."
-    )
-    assert result["recommendations"]["priority_skills_to_add"] == ["Docker", "FastAPI"]
-    assert result["recommendations"]["suggested_resume_bullets"] == [
-        "Add a project or work bullet showing how you used Docker and what result it produced.",
-        "Add a project or work bullet showing how you used FastAPI and what result it produced.",
-    ]
+    assert response.status_code == 422
 
 
-def test_job_match_combines_keyword_and_semantic_scores(monkeypatch):
-    monkeypatch.setattr("app.services.matcher.ENABLE_SEMANTIC_MATCHING", True)
+def test_job_match_uses_provided_resume_skills(monkeypatch):
     monkeypatch.setattr(
-        "app.services.matcher.calculate_semantic_similarity",
-        lambda resume_text, job_description: 80.0,
+        "app.services.matcher._semantic_similarity_or_none", lambda *a, **k: None
     )
 
     response = client.post(
         "/job/match",
         json={
-            "description": "Looking for Python, FastAPI, SQL, and Docker.",
+            "description": "Looking for Python, FastAPI, SQL, and Docker experience.",
             "resume_skills": ["Python", "SQL"],
-            "resume_text": "Built backend APIs using Python and SQL.",
         },
     )
 
     assert response.status_code == 200
     result = response.json()
-    assert result["keyword_score"] == 50.0
-    assert result["semantic_score"] == 80.0
-    assert result["overall_score"] == 69.5
-    assert result["recommendations"]["summary"] == (
-        "Moderate fit. Add proof for missing skills and make relevant experience easier to spot."
+    assert set(result["matched_skills"]) == {"Python", "SQL"}
+    assert "Docker" in result["missing_skills"]
+    assert "FastAPI" in result["missing_skills"]
+    assert set(result["category_scores"].keys()) == {
+        "skills", "experience", "education", "projects", "semantic_similarity",
+    }
+    assert result["recommendations"]["summary"]
+
+
+def test_job_match_rejects_too_short_description():
+    response = client.post(
+        "/job/match",
+        json={"description": "short", "resume_skills": ["Python"]},
     )
-    assert "FastAPI" in result["recommendations"]["priority_skills_to_add"]
+
+    assert response.status_code == 422
+
+
+def test_job_match_rejects_missing_resume_context(tmp_path, monkeypatch):
+    monkeypatch.setattr(database, "DATABASE_PATH", tmp_path / "test.db")
+
+    response = client.post(
+        "/job/match",
+        json={"description": "Looking for Python and SQL experience."},
+    )
+
+    assert response.status_code == 400
+    assert "Upload a resume first" in response.json()["detail"]
 
 
 def test_cosine_similarity_scores_identical_vectors_as_one():
@@ -127,16 +124,33 @@ def test_resume_upload_rejects_invalid_pdf(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == []
 
 
-def test_resume_upload_accepts_valid_pdf_with_safe_stored_filename(tmp_path, monkeypatch):
+def test_resume_upload_rejects_empty_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(resume, "UPLOAD_FOLDER", tmp_path)
+
+    response = client.post(
+        "/resume/upload",
+        files={"file": ("resume.pdf", b"", "application/pdf")},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Uploaded file is empty."
+
+
+def test_resume_upload_accepts_valid_pdf_with_extracted_fields(tmp_path, monkeypatch):
     monkeypatch.setattr(resume, "UPLOAD_FOLDER", tmp_path)
     monkeypatch.setattr(database, "DATABASE_PATH", tmp_path / "test.db")
+
+    resume_text = (
+        "Aryan\naryan@example.com\ngithub.com/aryan\n\n"
+        "SKILLS\nPython FastAPI SQL"
+    )
 
     response = client.post(
         "/resume/upload",
         files={
             "file": (
                 "../Aryan Resume.pdf",
-                _create_pdf_bytes("Aryan\naryan@example.com\nPython FastAPI SQL"),
+                _create_pdf_bytes(resume_text),
                 "application/pdf",
             )
         },
@@ -147,19 +161,50 @@ def test_resume_upload_accepts_valid_pdf_with_safe_stored_filename(tmp_path, mon
     assert result["filename"] == "../Aryan Resume.pdf"
     assert isinstance(result["resume_id"], int)
     assert result["email"] == "aryan@example.com"
+    assert result["github"] == "https://github.com/aryan"
     assert result["skills"] == ["FastAPI", "Python", "SQL"]
     assert result["stored_filename"].startswith("Aryan_Resume_")
     assert result["stored_filename"].endswith(".pdf")
     assert (tmp_path / result["stored_filename"]).exists()
+    assert result["education"] == []
+    assert result["certifications"] == []
+
+
+def test_get_resume_returns_persisted_analysis(tmp_path, monkeypatch):
+    monkeypatch.setattr(resume, "UPLOAD_FOLDER", tmp_path)
+    monkeypatch.setattr(database, "DATABASE_PATH", tmp_path / "test.db")
+
+    upload_response = client.post(
+        "/resume/upload",
+        files={
+            "file": (
+                "resume.pdf",
+                _create_pdf_bytes("Aryan\naryan@example.com\nPython FastAPI"),
+                "application/pdf",
+            )
+        },
+    )
+    resume_id = upload_response.json()["resume_id"]
+
+    response = client.get(f"/resume/{resume_id}")
+
+    assert response.status_code == 200
+    assert response.json()["id"] == resume_id
+
+
+def test_get_resume_rejects_unknown_id(tmp_path, monkeypatch):
+    monkeypatch.setattr(database, "DATABASE_PATH", tmp_path / "test.db")
+
+    response = client.get("/resume/999")
+
+    assert response.status_code == 404
 
 
 def test_job_match_uses_persisted_resume_id(tmp_path, monkeypatch):
     monkeypatch.setattr(resume, "UPLOAD_FOLDER", tmp_path)
     monkeypatch.setattr(database, "DATABASE_PATH", tmp_path / "test.db")
-    monkeypatch.setattr("app.services.matcher.ENABLE_SEMANTIC_MATCHING", True)
     monkeypatch.setattr(
-        "app.services.matcher.calculate_semantic_similarity",
-        lambda resume_text, job_description: 70.0,
+        "app.services.matcher._semantic_similarity_or_none", lambda *a, **k: 70.0
     )
 
     upload_response = client.post(
@@ -177,18 +222,16 @@ def test_job_match_uses_persisted_resume_id(tmp_path, monkeypatch):
     response = client.post(
         "/job/match",
         json={
-            "description": "Looking for Python, FastAPI, SQL, and Docker.",
+            "description": "Looking for Python, FastAPI, SQL, and Docker experience.",
             "resume_id": resume_id,
         },
     )
 
     assert response.status_code == 200
     result = response.json()
-    assert result["matched_skills"] == ["FastAPI", "Python", "SQL"]
+    assert set(result["matched_skills"]) == {"FastAPI", "Python", "SQL"}
     assert result["missing_skills"] == ["Docker"]
-    assert result["keyword_score"] == 75.0
-    assert result["semantic_score"] == 70.0
-    assert result["overall_score"] == 71.75
+    assert result["category_scores"]["semantic_similarity"] == 70.0
 
 
 def test_job_match_rejects_unknown_resume_id(tmp_path, monkeypatch):
@@ -197,7 +240,7 @@ def test_job_match_rejects_unknown_resume_id(tmp_path, monkeypatch):
     response = client.post(
         "/job/match",
         json={
-            "description": "Looking for Python.",
+            "description": "Looking for Python experience on this team.",
             "resume_id": 999,
         },
     )

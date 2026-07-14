@@ -29,7 +29,13 @@ def init_database() -> None:
                 stored_filename TEXT,
                 email TEXT,
                 phone TEXT,
+                github TEXT,
+                linkedin TEXT,
                 skills TEXT NOT NULL,
+                education TEXT NOT NULL DEFAULT '[]',
+                certifications TEXT NOT NULL DEFAULT '[]',
+                experience TEXT NOT NULL DEFAULT '[]',
+                projects TEXT NOT NULL DEFAULT '[]',
                 text TEXT NOT NULL,
                 created_at TEXT NOT NULL
             )
@@ -42,7 +48,13 @@ def save_resume_analysis(
     stored_filename: str,
     email: str | None,
     phone: str | None,
+    github: str | None,
+    linkedin: str | None,
     skills: list[str],
+    education: list[dict[str, Any]],
+    certifications: list[str],
+    experience: list[dict[str, Any]],
+    projects: list[dict[str, Any]],
     text: str,
 ) -> int:
     """
@@ -59,18 +71,30 @@ def save_resume_analysis(
                 stored_filename,
                 email,
                 phone,
+                github,
+                linkedin,
                 skills,
+                education,
+                certifications,
+                experience,
+                projects,
                 text,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 filename,
                 stored_filename,
                 email,
                 phone,
+                github,
+                linkedin,
                 json.dumps(skills),
+                json.dumps(education),
+                json.dumps(certifications),
+                json.dumps(experience),
+                json.dumps(projects),
                 text,
                 created_at,
             ),
@@ -86,10 +110,34 @@ def _resume_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
         "stored_filename": row["stored_filename"],
         "email": row["email"],
         "phone": row["phone"],
+        "github": row["github"],
+        "linkedin": row["linkedin"],
         "skills": json.loads(row["skills"]),
+        "education": json.loads(row["education"]),
+        "certifications": json.loads(row["certifications"]),
+        "experience": json.loads(row["experience"]),
+        "projects": json.loads(row["projects"]),
         "text": row["text"],
         "created_at": row["created_at"],
     }
+
+
+_SELECT_COLUMNS = """
+    id,
+    filename,
+    stored_filename,
+    email,
+    phone,
+    github,
+    linkedin,
+    skills,
+    education,
+    certifications,
+    experience,
+    projects,
+    text,
+    created_at
+"""
 
 
 def get_resume_analysis(resume_id: int) -> dict[str, Any] | None:
@@ -100,19 +148,7 @@ def get_resume_analysis(resume_id: int) -> dict[str, Any] | None:
 
     with _connect() as connection:
         row = connection.execute(
-            """
-            SELECT
-                id,
-                filename,
-                stored_filename,
-                email,
-                phone,
-                skills,
-                text,
-                created_at
-            FROM resumes
-            WHERE id = ?
-            """,
+            f"SELECT {_SELECT_COLUMNS} FROM resumes WHERE id = ?",
             (resume_id,),
         ).fetchone()
 
@@ -130,20 +166,7 @@ def get_latest_resume_analysis() -> dict[str, Any] | None:
 
     with _connect() as connection:
         row = connection.execute(
-            """
-            SELECT
-                id,
-                filename,
-                stored_filename,
-                email,
-                phone,
-                skills,
-                text,
-                created_at
-            FROM resumes
-            ORDER BY id DESC
-            LIMIT 1
-            """
+            f"SELECT {_SELECT_COLUMNS} FROM resumes ORDER BY id DESC LIMIT 1"
         ).fetchone()
 
     if row is None:

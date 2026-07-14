@@ -34,6 +34,21 @@ def cosine_similarity(first_vector: list[float], second_vector: list[float]) -> 
     return dot_product / (first_magnitude * second_magnitude)
 
 
+def calculate_text_similarity(text_a: str, text_b: str) -> float:
+    """
+    Compare two arbitrary text documents using sentence embeddings.
+
+    Returns:
+        A percentage score from 0.0 to 100.0.
+    """
+    embedding_a = generate_embedding(text_a)
+    embedding_b = generate_embedding(text_b)
+    similarity = cosine_similarity(embedding_a, embedding_b)
+
+    bounded_similarity = max(0.0, min(similarity, 1.0))
+    return round(bounded_similarity * 100, 2)
+
+
 def calculate_semantic_similarity(resume_text: str, job_description: str) -> float:
     """
     Compare resume text and job description using sentence embeddings.
@@ -46,10 +61,4 @@ def calculate_semantic_similarity(resume_text: str, job_description: str) -> flo
         A percentage score from 0.0 to 100.0.
     """
     logger.info("Generating semantic similarity score.")
-
-    resume_embedding = generate_embedding(resume_text)
-    job_embedding = generate_embedding(job_description)
-    similarity = cosine_similarity(resume_embedding, job_embedding)
-
-    bounded_similarity = max(0.0, min(similarity, 1.0))
-    return round(bounded_similarity * 100, 2)
+    return calculate_text_similarity(resume_text, job_description)

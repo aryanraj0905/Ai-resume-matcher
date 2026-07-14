@@ -1,7 +1,8 @@
 fastapi==0.139.0
-httpx2==2.5.0
+uvicorn[standard]==0.50.2
 pymupdf==1.28.0
 python-multipart==0.0.32
-pytest==9.0.2
+python-dotenv==1.2.2
 sentence-transformers>=5.0.0
-uvicorn==0.50.2
+httpx==0.28.1
+pytest==9.0.2
