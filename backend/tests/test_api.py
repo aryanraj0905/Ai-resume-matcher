@@ -54,6 +54,14 @@ def test_job_match_uses_provided_resume_skills():
     assert result["keyword_score"] == 50.0
     assert result["semantic_score"] is None
     assert result["overall_score"] == 50.0
+    assert result["recommendations"]["summary"] == (
+        "Needs improvement. Focus first on missing core skills and role-specific experience."
+    )
+    assert result["recommendations"]["priority_skills_to_add"] == ["Docker", "FastAPI"]
+    assert result["recommendations"]["suggested_resume_bullets"] == [
+        "Add a project or work bullet showing how you used Docker and what result it produced.",
+        "Add a project or work bullet showing how you used FastAPI and what result it produced.",
+    ]
 
 
 def test_job_match_combines_keyword_and_semantic_scores(monkeypatch):
@@ -77,6 +85,10 @@ def test_job_match_combines_keyword_and_semantic_scores(monkeypatch):
     assert result["keyword_score"] == 50.0
     assert result["semantic_score"] == 80.0
     assert result["overall_score"] == 69.5
+    assert result["recommendations"]["summary"] == (
+        "Moderate fit. Add proof for missing skills and make relevant experience easier to spot."
+    )
+    assert "FastAPI" in result["recommendations"]["priority_skills_to_add"]
 
 
 def test_cosine_similarity_scores_identical_vectors_as_one():

@@ -3,6 +3,7 @@ import logging
 from app.ai.embeddings import EmbeddingModelUnavailable
 from app.ai.similarity import calculate_semantic_similarity
 from app.config import ENABLE_SEMANTIC_MATCHING
+from app.services.recommendations import build_resume_recommendations
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ def match_skills(
     job_skills: list[str],
     resume_text: str | None = None,
     job_description: str | None = None,
-) -> dict[str, list[str] | int | float | None]:
+) -> dict[str, list[str] | dict[str, list[str] | str] | int | float | None]:
     """
     Compare resume skills with job description skills and optional semantics.
 
@@ -106,13 +107,25 @@ def match_skills(
             2,
         )
 
+    matched_skills = sorted(matched_skill_set)
+    missing_skills = sorted(missing_skill_set)
+    extra_skills = sorted(extra_skill_set)
+    recommendations = build_resume_recommendations(
+        missing_skills=missing_skills,
+        matched_skills=matched_skills,
+        extra_skills=extra_skills,
+        keyword_score=keyword_score,
+        semantic_score=semantic_score,
+        overall_score=overall_score,
+    )
+
     # Return sorted lists so API responses and tests stay deterministic.
     return {
         "resume_skills": sorted(resume_skill_set),
         "job_skills": sorted(job_skill_set),
-        "matched_skills": sorted(matched_skill_set),
-        "missing_skills": sorted(missing_skill_set),
-        "extra_skills": sorted(extra_skill_set),
+        "matched_skills": matched_skills,
+        "missing_skills": missing_skills,
+        "extra_skills": extra_skills,
         "total_resume_skills": total_resume_skills,
         "total_job_skills": total_job_skills,
         "matched_count": matched_count,
@@ -120,4 +133,5 @@ def match_skills(
         "keyword_score": keyword_score,
         "semantic_score": semantic_score,
         "overall_score": overall_score,
+        "recommendations": recommendations,
     }
