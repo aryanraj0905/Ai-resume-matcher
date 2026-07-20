@@ -2,6 +2,8 @@ import logging
 from functools import lru_cache
 from typing import Any
 
+from app.config import ENABLE_SEMANTIC_MATCHING
+
 logger = logging.getLogger(__name__)
 
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
@@ -19,7 +21,18 @@ def get_embedding_model() -> Any:
     Sentence Transformer models are expensive to initialize, so this function
     must be the only place that loads the model. The lru_cache ensures the
     model is created once and then reused for later requests.
+
+    This is also the single gate for ENABLE_SEMANTIC_MATCHING: every embedding
+    consumer (semantic similarity, and the experience/education/projects
+    category scorers' semantic fallback) goes through here, so disabling the
+    flag skips loading torch/sentence-transformers entirely rather than just
+    turning off the standalone semantic_similarity category.
     """
+    if not ENABLE_SEMANTIC_MATCHING:
+        raise EmbeddingModelUnavailable(
+            "Semantic matching is disabled (ENABLE_SEMANTIC_MATCHING=false)."
+        )
+
     logger.info("Loading embedding model: %s", EMBEDDING_MODEL_NAME)
 
     from sentence_transformers import SentenceTransformer
