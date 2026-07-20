@@ -116,9 +116,10 @@ See `/docs` for full request/response schemas once the backend is running.
 
 A `render.yaml` is included. Connect the repo in Render, set the root directory to `backend/`, and set `CORS_ALLOWED_ORIGINS` to your deployed frontend URL (comma-separated if there's more than one, e.g. a Vercel preview + production URL).
 
-Two things worth knowing about the free plan:
+Three things worth knowing about the free plan:
 
-- **Cold starts.** The free instance spins down after inactivity. The first request after a spin-down needs to boot the process and load the embedding model, which the frontend's "warming up" timeout message is written to cover — but it can still take 30-60s. Upgrading to a paid instance (or pinging `/health` on a schedule) avoids this.
+- **512MB RAM can't reliably run the embedding model.** Verified in production: loading torch + sentence-transformers under real request load OOM-crashed the free instance mid-request. `render.yaml` ships with `ENABLE_SEMANTIC_MATCHING=false` for this reason — the app degrades gracefully (the semantic_similarity category reports `N/A` and its weight redistributes across skills/experience/education/projects, see `app/ai/category_scoring.py`). Flip it to `"true"` once you're on a plan with more memory (Starter or above).
+- **Cold starts.** The free instance spins down after inactivity; the first request after a spin-down needs to boot the process, which the frontend's "warming up" timeout message is written to cover. Upgrading to a paid instance (or pinging `/health` on a schedule) avoids this.
 - **Ephemeral disk.** Without an attached Render disk, the SQLite DB and uploaded PDFs reset on every deploy/restart — see the comment in `render.yaml` for how to attach one if you need resume lookups to survive restarts.
 
 ### Frontend (Vercel)
