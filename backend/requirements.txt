@@ -3,6 +3,14 @@ uvicorn[standard]==0.50.2
 pymupdf==1.28.0
 python-multipart==0.0.32
 python-dotenv==1.2.2
+
+# CPU-only torch build. Without this pin, pip resolves the default PyPI
+# torch wheel, which bundles CUDA runtime libraries (~2GB+) and routinely
+# blows past free-tier build time/disk limits on hosts like Render. This
+# app only ever runs CPU inference, so the CUDA build buys nothing.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.9.1+cpu
 sentence-transformers>=5.0.0
+
 httpx==0.28.1
 pytest==9.0.2

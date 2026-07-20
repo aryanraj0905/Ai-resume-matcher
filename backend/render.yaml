@@ -1,3 +1,10 @@
+# Note: on the free plan, this service has no persistent disk. The SQLite
+# database (DATABASE_PATH) and uploaded PDFs (uploads/) live on local,
+# ephemeral storage and are wiped on every deploy, restart, or spin-down.
+# That's fine for this app's actual persistence needs (a resume analysis
+# only needs to survive the single upload -> match request), but don't rely
+# on old resume_id lookups surviving a redeploy. To persist across restarts,
+# add a Render disk mounted at /var/data and set DATABASE_PATH accordingly.
 services:
   - type: web
     name: ai-resume-matcher-api
@@ -12,3 +19,8 @@ services:
         value: https://your-frontend.vercel.app
       - key: PYTHON_VERSION
         value: 3.12.7
+    # disk:
+    #   name: resume-matcher-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    # Then set DATABASE_PATH=/var/data/resume_matcher.db as an env var above.
