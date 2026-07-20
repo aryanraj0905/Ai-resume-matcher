@@ -5,6 +5,7 @@ import LandingPage from "./pages/LandingPage.jsx";
 import UploadPage from "./pages/UploadPage.jsx";
 import AnalyzingPage from "./pages/AnalyzingPage.jsx";
 import ResultsPage from "./pages/ResultsPage.jsx";
+import NotFoundPage from "./pages/NotFoundPage.jsx";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/analyzing" element={<AnalyzingPage />} />
           <Route path="/results" element={<ResultsPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
       <Footer />

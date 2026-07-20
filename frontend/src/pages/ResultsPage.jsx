@@ -45,7 +45,13 @@ export default function ResultsPage() {
   }, [match]);
 
   if (!resume || !match) {
-    return <Navigate to="/upload" replace />;
+    return (
+      <Navigate
+        to="/upload"
+        replace
+        state={{ notice: "Your results have expired. Please run a new analysis." }}
+      />
+    );
   }
 
   const { recommendations } = match;

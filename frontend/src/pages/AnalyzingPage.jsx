@@ -21,7 +21,10 @@ export default function AnalyzingPage() {
 
   useEffect(() => {
     if (!file || !jobDescription) {
-      navigate("/upload", { replace: true });
+      navigate("/upload", {
+        replace: true,
+        state: { notice: "Please upload your resume and job description to get started." },
+      });
       return;
     }
 

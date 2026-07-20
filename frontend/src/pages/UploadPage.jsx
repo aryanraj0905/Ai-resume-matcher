@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowRight, ClipboardPaste } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowRight, ClipboardPaste, Info } from "lucide-react";
 import FileDropzone from "../components/FileDropzone.jsx";
 
 const MIN_JOB_DESCRIPTION_LENGTH = 20;
 
 export default function UploadPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [file, setFile] = useState(null);
   const [fileError, setFileError] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
   const [formError, setFormError] = useState(null);
+  const notice = location.state?.notice;
 
   const handleFileSelected = (selectedFile, error) => {
     setFile(selectedFile);
@@ -44,6 +46,13 @@ export default function UploadPage() {
           Upload your resume and paste the job description you're targeting.
         </p>
       </div>
+
+      {notice && (
+        <div className="mb-6 flex items-start gap-2.5 rounded-lg bg-brand-50 px-4 py-3 text-sm font-medium text-brand-700 ring-1 ring-brand-100">
+          <Info size={16} className="mt-0.5 shrink-0" />
+          {notice}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-8 rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
         <div>
